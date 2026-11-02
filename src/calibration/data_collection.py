@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 import shutil
 import sys
-import time
 from uuid import uuid4
 
 import cv2
@@ -21,57 +20,52 @@ from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
 WIDTH, HEIGHT, FPS = 1280, 720, 30
 WINDOW = "Hand-eye calibration | Space: capture | Q/Esc: quit"
-POSE_FIELDS = [
-    "sample_index", "image", "captured_at_utc", "x", "y", "z", "rx", "ry", "rz",
-    *[f"T_base_tcp_{row}{col}" for row in range(4) for col in range(4)],
-    "camera_frame_number", "camera_timestamp_ms", "camera_timestamp_domain",
-    "tcp_read_started_unix_ns", "tcp_read_finished_unix_ns",
-]
 
 
-def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def write_json(path: Path, data: dict) -> None:
+def save_camera_intrinsics(path: Path, intrinsics) -> None:
+    """Export GUI-compatible YAML for the saved, 180-degree-rotated images."""
+    coefficients = list(intrinsics.coeffs)
+    # The GUI uses OpenCV's forward Brown-Conrady distortion model.
+    if any(coefficients) and intrinsics.model != rs.distortion.brown_conrady:
+        raise ValueError(
+            f"Cannot export nonzero {intrinsics.model} coefficients as plumb_bob. "
+            "Calibrate OpenCV intrinsics for this camera first."
+        )
+    # Rotating the optical frame around Z negates the tangential coefficients.
+    coefficients[2] *= -1
+    coefficients[3] *= -1
+    cx = intrinsics.width - 1 - intrinsics.ppx
+    cy = intrinsics.height - 1 - intrinsics.ppy
+    fx, fy = intrinsics.fx, intrinsics.fy
+    matrices = {
+        "camera_matrix": (3, 3, [fx, 0., cx, 0., fy, cy, 0., 0., 1.]),
+        "distortion_coefficients": (5, 1, coefficients),
+        "rectification_matrix": (3, 3, [1., 0., 0., 0., 1., 0., 0., 0., 1.]),
+        "projection_matrix": (3, 4, [fx, 0., cx, 0., 0., fy, cy, 0., 0., 0., 1., 0.]),
+    }
     with path.open("w", encoding="utf-8") as file:
-        json.dump(data, file, indent=2, allow_nan=False)
-        file.write("\n")
+        file.write(f"camera_name: RealSense\nimage_width: {intrinsics.width}\n"
+                   f"image_height: {intrinsics.height}\ndistortion_model: plumb_bob\n")
+        for name, (rows, cols, data) in matrices.items():
+            file.write(f"{name}:\n  rows: {rows}\n  cols: {cols}\n  dt: d\n"
+                       f"  data: {json.dumps(data, allow_nan=False)}\n")
 
 
 def save_pair(session: Path, index: int, frame, robot) -> Path:
     """Save an image and publish its matching row in the session CSV."""
-    read_started_ns = time.time_ns()
     if not robot.isConnected():
         raise RuntimeError("Robot RTDE connection lost; pair was not saved.")
     pose = np.asarray(robot.getActualTCPPose(), dtype=float)
-    read_finished_ns = time.time_ns()
     if pose.shape != (6,) or not np.isfinite(pose).all():
         raise ValueError(f"Invalid TCP pose received: {pose}")
     image = np.asanyarray(frame.get_data())
     if image.shape != (HEIGHT, WIDTH, 3):
         raise ValueError(f"Expected a {WIDTH}x{HEIGHT} color frame, got {image.shape}.")
-    rotation, _ = cv2.Rodrigues(pose[3:])
-    transform = np.eye(4)
-    transform[:3, :3] = rotation
-    transform[:3, 3] = pose[:3]
-    record = {
-        "sample_index": index,
-        "captured_at_utc": utc_now(),
-        "image": f"images/{index:06d}.png",
-        **dict(zip(("x", "y", "z", "rx", "ry", "rz"), pose.tolist())),
-        **{f"T_base_tcp_{row}{col}": float(transform[row, col])
-           for row in range(4) for col in range(4)},
-        "camera_frame_number": frame.get_frame_number(),
-        "camera_timestamp_ms": frame.get_timestamp(),
-        "camera_timestamp_domain": str(frame.get_frame_timestamp_domain()),
-        "tcp_read_started_unix_ns": read_started_ns,
-        "tcp_read_finished_unix_ns": read_finished_ns,
-    }
-    destination = session / record["image"]
+    # Row 1 corresponds to 1.png, row 2 to 2.png, etc.; no CSV header.
+    destination = session / f"{index + 1}.png"
     if destination.exists():
         raise FileExistsError(f"Refusing to overwrite {destination}")
-    staging_image = session / "images" / f".pending_{uuid4().hex}.png"
+    staging_image = session / f".pending_{uuid4().hex}.png"
     staging_csv = session / f".pending_{uuid4().hex}.csv"
     published_image = False
     try:
@@ -79,12 +73,12 @@ def save_pair(session: Path, index: int, frame, robot) -> Path:
             raise OSError("Could not write the captured image.")
         # Replace the CSV atomically so a failed write preserves earlier rows.
         with staging_csv.open("w", encoding="utf-8", newline="") as output:
-            with (session / "poses.csv").open("r", encoding="utf-8", newline="") as source:
+            with (session / "robot_poses.csv").open("r", encoding="utf-8", newline="") as source:
                 shutil.copyfileobj(source, output)
-            csv.DictWriter(output, fieldnames=POSE_FIELDS).writerow(record)
+            csv.writer(output).writerow(pose.tolist())
         staging_image.rename(destination)
         published_image = True
-        staging_csv.replace(session / "poses.csv")
+        staging_csv.replace(session / "robot_poses.csv")
     except BaseException:
         if published_image:
             destination.unlink(missing_ok=True)
@@ -115,51 +109,14 @@ def collect(args: argparse.Namespace) -> None:
         profile = pipeline.start(config)
         started = True
         intrinsics = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
-        device = profile.get_device()
         args.save_dir.mkdir(parents=True, exist_ok=True)
         session = args.save_dir / (
             datetime.now(timezone.utc).strftime("session_%Y%m%dT%H%M%S_%fZ_")
             + uuid4().hex[:8]
         )
-        (session / "images").mkdir(parents=True)
-        with (session / "poses.csv").open("x", encoding="utf-8", newline="") as file:
-            csv.DictWriter(file, fieldnames=POSE_FIELDS).writeheader()
-        write_json(session / "session.json", {
-            "schema_version": 2,
-            "images_directory": "images",
-            "poses_file": "poses.csv",
-            "created_at_utc": utc_now(),
-            "robot_ip": args.robot_ip,
-            "requested_num_samples": args.num_samples,
-            "camera": {
-                "serial": device.get_info(rs.camera_info.serial_number),
-                "width": WIDTH, "height": HEIGHT, "fps": FPS,
-                "image_format": "PNG", "stream_format": "bgr8",
-                "image_rotation_degrees": 180,
-                # Preserve factory intrinsics in the native optical frame.
-                # Map detected saved-image pixels back before pose estimation.
-                "intrinsics_pixel_frame": "native_unrotated_color",
-                "saved_pixel_to_native_pixel": [
-                    [-1, 0, WIDTH - 1],
-                    [0, -1, HEIGHT - 1],
-                    [0, 0, 1],
-                ],
-                "intrinsics": {
-                    "fx": intrinsics.fx, "fy": intrinsics.fy,
-                    "ppx": intrinsics.ppx, "ppy": intrinsics.ppy,
-                    "distortion_model": str(intrinsics.model),
-                    "distortion_coefficients": list(intrinsics.coeffs),
-                },
-            },
-            "pose_convention": {
-                "tcp_pose": "[x, y, z, rx, ry, rz] in robot base frame",
-                "translation_unit": "metres",
-                "orientation": "rotation vector (axis multiplied by angle in radians)",
-                "T_base_tcp": "4x4 homogeneous matrix mapping TCP coordinates to robot base",
-                "tool_frame": "TCP configured on the robot at collection time",
-            },
-            "synchronization": "Sequential camera/RTDE reads, not hardware synchronized. Keep robot stationary for capture.",
-        })
+        session.mkdir(parents=True)
+        save_camera_intrinsics(session / "camera_intrinsics.yaml", intrinsics)
+        (session / "robot_poses.csv").touch(exist_ok=False)
         print(f"Saving pairs to: {session.resolve()}")
         print("Move the robot manually, stop, then press Space in the preview.")
         print("Q / Esc or Ctrl+C stops collection. No robot motion commands are sent.")

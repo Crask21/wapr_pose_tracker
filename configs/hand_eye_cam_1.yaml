@@ -1,0 +1,39 @@
+# Extrinsic calibration result for camera 1.
+# Frame direction was not supplied; confirm it before applying this transform.
+schema_version: 1
+camera_name: hand_eye_cam_1
+source_frame: null
+target_frame: null
+
+translation:
+  unit: meters
+  x: -0.1436143377649357
+  y: -1.044273887102873
+  z: 0.5541811314276588
+
+rotation:
+  quaternion_order: xyzw
+  quaternion:
+    x: -0.9658213179454301
+    y: 0.004985652718280977
+    z: -0.01267986886172639
+    w: 0.2588504317067558
+  matrix:
+    - [0.99962872838524441, -0.0030661203006908623, 0.027074052027749596]
+    - [-0.016194878416062562, -0.86594319454439794, 0.49988009535820893]
+    - [0.02191189859388163, -0.50013296504884075, -0.8656713498617512]
+
+# Homogeneous transform using column vectors: p_target = T * p_source.
+# Translation is in meters. Source and target frame names remain unconfirmed.
+transform:
+  - [0.99962872838524441, -0.0030661203006908623, 0.027074052027749596, -0.1436143377649357]
+  - [-0.016194878416062562, -0.86594319454439794, 0.49988009535820893, -1.044273887102873]
+  - [0.02191189859388163, -0.50013296504884075, -0.8656713498617512, 0.5541811314276588]
+  - [0.0, 0.0, 0.0, 1.0]
+
+error:
+  translation_unit: millimeters
+  rotation_unit: degrees
+  average: {translation: 1.249, rotation: 0.500}
+  minimum: {translation: 0.279, rotation: 0.200}
+  maximum: {translation: 2.808, rotation: 1.042}
