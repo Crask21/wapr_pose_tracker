@@ -1,0 +1,25 @@
+[project]
+name = "wapr-pose-tracker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "CasperR", email = "cashe@mmmi.sdu.dk" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+    "opencv-python>=4.10",
+    "pyrealsense2>=2.59.1.11053",
+    "torch>=2.15.0",
+    "torchvision>=0.29.2",
+    "ur-rtde>=1.6.5",
+    "wapr>=0.0.11",
+]
+
+[project.scripts]
+wapr-pose-tracker = "wapr_pose_tracker:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"

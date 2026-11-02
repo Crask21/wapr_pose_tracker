@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "images_directory": "images",
+  "poses_file": "poses.csv",
+  "created_at_utc": "2026-11-02T14:15:04.530864+00:00",
+  "robot_ip": "192.168.1.130",
+  "requested_num_samples": 60,
+  "camera": {
+    "serial": "263322075966",
+    "width": 1280,
+    "height": 720,
+    "fps": 30,
+    "image_format": "PNG",
+    "stream_format": "bgr8",
+    "image_rotation_degrees": 180,
+    "intrinsics_pixel_frame": "native_unrotated_color",
+    "saved_pixel_to_native_pixel": [
+      [
+        -1,
+        0,
+        1279
+      ],
+      [
+        0,
+        -1,
+        719
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "intrinsics": {
+      "fx": 911.0758056640625,
+      "fy": 910.704833984375,
+      "ppx": 653.2208862304688,
+      "ppy": 389.24359130859375,
+      "distortion_model": "distortion.inverse_brown_conrady",
+      "distortion_coefficients": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "pose_convention": {
+    "tcp_pose": "[x, y, z, rx, ry, rz] in robot base frame",
+    "translation_unit": "metres",
+    "orientation": "rotation vector (axis multiplied by angle in radians)",
+    "T_base_tcp": "4x4 homogeneous matrix mapping TCP coordinates to robot base",
+    "tool_frame": "TCP configured on the robot at collection time"
+  },
+  "synchronization": "Sequential camera/RTDE reads, not hardware synchronized. Keep robot stationary for capture."
+}
