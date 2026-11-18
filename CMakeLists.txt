@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.16)
+project(wapr_pose_tracker)
+find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+ament_python_install_package(${PROJECT_NAME} PACKAGE_DIR src/${PROJECT_NAME})
+install(PROGRAMS scripts/wapr_pose_tracker_node DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY launch configs DESTINATION share/${PROJECT_NAME})
+ament_package()

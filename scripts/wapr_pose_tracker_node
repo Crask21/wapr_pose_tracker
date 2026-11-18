@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+from wapr_pose_tracker.ros_node import main
+
+main()

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>wapr_pose_tracker</name>
+  <version>0.1.0</version>
+  <description>RealSense RGB-D WAPR tracking with world-frame PoseStamped output.</description>
+  <maintainer email="cashe@mmmi.sdu.dk">CasperR</maintainer>
+  <license>Proprietary</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>message_filters</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>realsense2_camera</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

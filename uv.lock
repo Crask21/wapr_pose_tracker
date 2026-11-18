@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -1092,8 +1092,10 @@ dependencies = [
     { name = "numpy" },
     { name = "opencv-python" },
     { name = "pyrealsense2" },
+    { name = "pyyaml" },
     { name = "torch" },
     { name = "torchvision" },
+    { name = "trimesh" },
     { name = "ur-rtde" },
     { name = "wapr" },
 ]
@@ -1103,8 +1105,10 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0" },
     { name = "opencv-python", specifier = ">=4.10" },
     { name = "pyrealsense2", specifier = ">=2.59.1.11053" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "torch", specifier = ">=2.15.0" },
     { name = "torchvision", specifier = ">=0.29.2" },
+    { name = "trimesh", specifier = ">=4.0" },
     { name = "ur-rtde", specifier = ">=1.6.5" },
     { name = "wapr", specifier = ">=0.0.11" },
 ]

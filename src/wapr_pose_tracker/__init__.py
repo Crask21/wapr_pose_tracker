@@ -1,2 +1,4 @@
 def main() -> None:
-    print("Hello from wapr-pose-tracker!")
+    from .cli import main as run
+
+    run()
